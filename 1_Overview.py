@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import pycountry_convert as pc
+import numpy as np
 
 st.title("Overview")
 
@@ -44,3 +46,18 @@ medal_ranking_df = medal_df.sort_values(
     )
 medal_ranking_fig = px.bar(medal_ranking_df, x="country", y="count", color="medal", barmode="group", title="Country Ranking By Medals")
 st.plotly_chart(medal_ranking_fig)
+
+
+def get_continent_code(country_name):
+    try:
+        country_code = pc.country_name_to_country_alpha2(country_name, cn_name_format="default")
+        continent_code = pc.country_alpha2_to_continent_code(country_code)
+        return continent_code
+    except:
+        return np.nan
+    
+
+df = pd.read_csv("data/medals_total.csv")
+df["continent"] = df["country_code"].apply(get_continent_code)
+
+df
