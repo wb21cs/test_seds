@@ -1,8 +1,11 @@
+import math
+import requests
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import ast
+from utils.get_athlete_image import get_athlete_image
 
 df = pd.read_csv("data/athletes.csv")
 athletes = df.copy()
@@ -49,10 +52,9 @@ if selected_athlete:
         .to_dict()
     )
 
-    def get_athlete_image(name):
-        return "https://img.olympics.com/images/image/private/t_1-1_300/f_auto/primary/pgotjrtojoadz7ylp7gv"
-
     athlete['image'] = get_athlete_image(athlete['name'])
+    if isinstance(athlete["coach"], float) and math.isnan(athlete["coach"]):
+        athlete["coach"] = "Not available"
 
     # athlete
 
@@ -62,7 +64,13 @@ if selected_athlete:
 
     with col1:
         if athlete["image"]:
-            st.image(athlete["image"], width=160)
+            @st.cache_data
+            def fetch_image(url):
+                response = requests.get(url, timeout=10)
+                response.raise_for_status()
+                return response.content
+            
+            st.image(fetch_image(athlete["image"]), width=160)
         else:
             st.markdown(
                 """
@@ -88,11 +96,8 @@ if selected_athlete:
         st.markdown(f"**Height:** {athlete['height']} cm")
         st.markdown(f"**Weight:** {athlete['weight']} kg")
         st.markdown(f"**Sport(s):** {", ".join(athlete['disciplines'])}")
-        st.markdown(f"**Events(s):** {", ".join(athlete['events'])}")
-        if type(athlete["coach"]) == 'float':
-            st.markdown("**Coach(s):** -")
-        else:
-            st.markdown(f"**Coach(s):** {athlete['coach'].replace(".<br>", ", ")}")
+        st.markdown(f"**Events(s):** {", ".join(athlete['events'])}")    
+        st.markdown(f"**Coach(s):** {athlete['coach'].replace(".<br>", ", ")}")
 
 
 
