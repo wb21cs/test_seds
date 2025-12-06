@@ -21,17 +21,7 @@ fig = px.choropleth(
 st.plotly_chart(fig, use_container_width=True)
 
 
-medal_ranking_df = pd.read_csv("data/medals_total.csv").sort_values(
-        by=["Gold", "Silver", "Bronze"],
-        ascending=[False, False, False]
-    ).loc[:, ["country_code", "country", "Gold", "Silver", "Bronze"]].head(20).melt(
-        id_vars=["country_code", "country"],
-        value_vars=['Gold', 'Silver', 'Bronze'],
-        var_name='medal',
-        value_name='count'
-    )
-medal_ranking_fig = px.bar(medal_ranking_df, x="country", y="count", color="medal", barmode="group", title="Country Ranking By Medals")
-st.plotly_chart(medal_ranking_fig)
+
 
 
 def get_continent_code(country_name):
@@ -43,12 +33,55 @@ def get_continent_code(country_name):
         return np.nan
 
 
+df = pd.read_csv("data/medals_total.csv")
+df["continent"] = df["country_code"].apply(get_continent_code)
+df.loc[df["country_code"] == "XKX", "continent"] = "EU"
+df["continent"] = df["continent"].fillna("Other")
+
+
+df = df.sort_values(
+        by=["Gold", "Silver", "Bronze"],
+        ascending=[False, False, False]
+    )
+
+
+df = df.melt(
+        id_vars=["country", "continent"],
+        value_vars=['Gold', 'Silver', 'Bronze'],
+        var_name='medal',
+        value_name='count'
+    )
+
+
+df = (df.groupby(["continent", "medal"], as_index=False)
+      .agg(count=("count", "sum"))
+      .reset_index())
+
+
+fig = px.bar(df, x='continent', y='count', color="medal")
+st.plotly_chart(fig)
+
+
 df = pd.read_csv("data/medals.csv")
 df["continent"] = df["country_code"].apply(get_continent_code)
 df.loc[df["country_code"] == "KOS", "continent"] = "EU"
 df["continent"] = df["continent"].fillna("Other")
 
-# df
-
 fig = px.sunburst(df, path=['continent', 'country_code', 'discipline'], color="continent", title = "Distribution Of Medals By Continent, Country and Discipline")
 st.plotly_chart(fig)
+
+
+
+
+
+medal_ranking_df = pd.read_csv("data/medals_total.csv").sort_values(
+        by=["Gold", "Silver", "Bronze"],
+        ascending=[False, False, False]
+    ).loc[:, ["country_code", "country", "Gold", "Silver", "Bronze"]].head(20).melt(
+        id_vars=["country_code", "country"],
+        value_vars=['Gold', 'Silver', 'Bronze'],
+        var_name='medal',
+        value_name='count'
+    )
+medal_ranking_fig = px.bar(medal_ranking_df, x="country", y="count", color="medal", barmode="group", title="Country Ranking By Medals")
+st.plotly_chart(medal_ranking_fig)
