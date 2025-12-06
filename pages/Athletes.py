@@ -9,39 +9,113 @@ import pycountry
 import pycountry_convert as pc
 import sys
 import os
+from bs4 import BeautifulSoup
 
 # Add parent directory to path to access utils
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Try to import get_athlete_image, use fallback if not available
-try:
-    from utils.get_athlete_image import get_athlete_image
-except ImportError:
-    # Fallback function if utils module is not found
-    def get_athlete_image(athlete_name):
-        """
-        Placeholder function to get athlete image.
-        Replace this with your actual implementation if you have image URLs.
-        """
-        return Noneimport math
-import requests
-import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.express as px
-import ast
-import pycountry
-import pycountry_convert as pc
+# ========== UPDATED SECTION - REPLACE OLD get_athlete_image FUNCTION ==========
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def get_athlete_data(name):
+    """
+    Fetch athlete image and additional information from olympics.com
+    
+    Args:
+        name (str): Athlete's full name
+        
+    Returns:
+        dict: Dictionary containing image URL and additional info, or None if not found
+    """
+    try:
+        # Format name: reverse order and join with hyphens, lowercase
+        name_parts = name.lower().split()
+        formatted_name = "-".join(name_parts[::-1])
+        
+        url = f"https://www.olympics.com/en/athletes/{formatted_name}"
+        
+        # Make request with headers to mimic browser
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        # If page not found, return None
+        if response.status_code == 404:
+            return None
+            
+        response.raise_for_status()
+        
+        # Parse HTML
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        athlete_data = {
+            'image_url': None,
+            'bio': None,
+            'achievements': [],
+            'social_media': {},
+            'url': url
+        }
+        
+        # Try to find athlete image
+        img_selectors = [
+            'img.athlete-hero__image',
+            'img[class*="athlete"]',
+            'img[class*="profile"]',
+            'div.athlete-hero img',
+            'picture img'
+        ]
+        
+        for selector in img_selectors:
+            img_tag = soup.select_one(selector)
+            if img_tag:
+                image_url = img_tag.get('src') or img_tag.get('data-src') or img_tag.get('data-lazy-src')
+                if image_url:
+                    if image_url.startswith('//'):
+                        image_url = 'https:' + image_url
+                    elif image_url.startswith('/'):
+                        image_url = 'https://www.olympics.com' + image_url
+                    athlete_data['image_url'] = image_url
+                    break
+        
+        # Try to extract bio/description
+        bio_selectors = [
+            'div.athlete-bio',
+            'div[class*="biography"]',
+            'div[class*="description"]',
+            'p.athlete-description'
+        ]
+        
+        for selector in bio_selectors:
+            bio_tag = soup.select_one(selector)
+            if bio_tag:
+                athlete_data['bio'] = bio_tag.get_text(strip=True)
+                break
+        
+        # Try to find achievements/medals
+        medal_elements = soup.select('[class*="medal"]')
+        for medal in medal_elements[:5]:
+            text = medal.get_text(strip=True)
+            if text:
+                athlete_data['achievements'].append(text)
+        
+        return athlete_data
+        
+    except requests.RequestException as e:
+        print(f"Error fetching data for {name}: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error for {name}: {e}")
+        return None
 
-# Function to get athlete image (if available)
-def get_athlete_image(athlete_name):
+
+def get_athlete_image(name):
     """
-    Placeholder function to get athlete image.
-    Replace this with your actual implementation if you have image URLs.
+    Backwards compatible function that returns just the image URL
     """
-    # You can implement this to return image URLs from a dataset or API
-    # For now, returning None as placeholder
-    return None
+    data = get_athlete_data(name)
+    return data['image_url'] if data else None
+# ========== END OF UPDATED SECTION ==========
 
 # Page configuration
 st.set_page_config(
@@ -275,6 +349,15 @@ selected_continents = st.sidebar.multiselect(
     help="Filter athletes by continent"
 )
 
+# Gender filter
+st.sidebar.subheader("⚧️ Gender")
+gender_options = st.sidebar.radio(
+    "Select Gender:",
+    ["All", "Male", "Female"],
+    index=0,
+    help="Filter athletes by gender"
+)
+
 # Medal type filter
 st.sidebar.subheader("🥇 Medal Types")
 show_gold = st.sidebar.checkbox("Gold", value=True)
@@ -296,9 +379,12 @@ if selected_countries:
 if selected_continents:
     filtered_athletes = filtered_athletes[filtered_athletes['continent'].isin(selected_continents)]
 
+# Filter by gender
+if gender_options != "All":
+    filtered_athletes = filtered_athletes[filtered_athletes['gender'] == gender_options]
+
 # Filter by sports/disciplines
 if selected_sports:
-    # Filter athletes who have any of the selected sports in their disciplines list
     filtered_athletes = filtered_athletes[
         filtered_athletes['disciplines'].apply(
             lambda x: any(sport in x for sport in selected_sports) if isinstance(x, list) else False
@@ -329,7 +415,6 @@ with col2:
     st.metric("🌍 Countries", unique_countries)
 
 with col3:
-    # Count unique disciplines
     all_disciplines = []
     for disc_list in filtered_athletes['disciplines']:
         if isinstance(disc_list, list):
@@ -356,6 +441,7 @@ selected_athlete = st.selectbox(label="Select an athlete:",
              format_func=lambda opt: str(np.array(filtered_athletes.loc[filtered_athletes["code"] == opt, "name"])[0])
              )
 
+# ========== UPDATED ATHLETE PROFILE SECTION ==========
 if selected_athlete:
     athlete = (filtered_athletes.loc[
             filtered_athletes["code"] == selected_athlete,
@@ -365,7 +451,9 @@ if selected_athlete:
         .to_dict()
     )
 
-    athlete['image'] = get_athlete_image(athlete['name'])
+    # Fetch enhanced athlete data from olympics.com
+    athlete_data = get_athlete_data(athlete['name'])
+    
     if isinstance(athlete["coach"], float) and math.isnan(athlete["coach"]):
         athlete["coach"] = "Not available"
 
@@ -374,20 +462,35 @@ if selected_athlete:
     col1, col2 = st.columns([1, 3], gap="large")
 
     with col1:
-        if athlete["image"]:
-            @st.cache_data
-            def fetch_image(url):
-                response = requests.get(url, timeout=10)
-                response.raise_for_status()
-                return response.content
-            
-            st.image(fetch_image(athlete["image"]), width=160)
+        # Display image from olympics.com if available
+        if athlete_data and athlete_data['image_url']:
+            try:
+                st.image(athlete_data['image_url'], width=200)
+            except:
+                # Fallback to placeholder if image fails to load
+                st.markdown(
+                    """
+                    <div style="
+                        width:200px;
+                        height:200px;
+                        border-radius:50%;
+                        background:#e5e7eb;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        font-size:48px;
+                        color:#6b7280;">
+                        👤
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
         else:
             st.markdown(
                 """
                 <div style="
-                    width:160px;
-                    height:160px;
+                    width:200px;
+                    height:200px;
                     border-radius:50%;
                     background:#e5e7eb;
                     display:flex;
@@ -404,14 +507,41 @@ if selected_athlete:
     with col2:
         st.markdown(f"### {athlete['name']}")
         st.markdown(f"**Country:** {athlete['country']}")
-        st.markdown(f"**Height:** {athlete['height']} cm")
-        st.markdown(f"**Weight:** {athlete['weight']} kg")
+        
+        # Display height only if valid (not 0, not NaN)
+        if pd.notna(athlete['height']) and athlete['height'] > 0:
+            st.markdown(f"**Height:** {athlete['height']} cm")
+        else:
+            st.markdown(f"**Height:** Not available")
+        
+        # Display weight only if valid (not 0, not NaN)
+        if pd.notna(athlete['weight']) and athlete['weight'] > 0:
+            st.markdown(f"**Weight:** {athlete['weight']} kg")
+        else:
+            st.markdown(f"**Weight:** Not available")
+        
         disciplines_str = ', '.join(athlete['disciplines'])
         st.markdown(f"**Sport(s):** {disciplines_str}")
         events_str = ', '.join(athlete['events'])
-        st.markdown(f"**Events(s):** {events_str}")
+        st.markdown(f"**Event(s):** {events_str}")
         coach_str = athlete['coach'].replace('.<br>', ', ')
         st.markdown(f"**Coach(s):** {coach_str}")
+        
+        # Add link to full profile
+        if athlete_data and athlete_data['url']:
+            st.markdown(f"🔗 [View full profile on Olympics.com]({athlete_data['url']})")
+    
+    # Add expandable section for biography and achievements
+    if athlete_data:
+        if athlete_data['bio']:
+            with st.expander("📖 Biography"):
+                st.write(athlete_data['bio'])
+        
+        if athlete_data['achievements']:
+            with st.expander("🏆 Recent Achievements"):
+                for achievement in athlete_data['achievements']:
+                    st.write(f"- {achievement}")
+# ========== END OF UPDATED ATHLETE PROFILE SECTION ==========
 
 st.markdown("---")
 
@@ -525,7 +655,6 @@ if selected_countries:
 
 # Apply continent filter to medals
 if selected_continents:
-    # Add continent to medals if not present
     if 'continent_code' not in filtered_medals.columns:
         def get_continent_code_simple(country_code):
             try:
