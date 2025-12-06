@@ -9,6 +9,15 @@ import pycountry
 import pycountry_convert as pc
 import sys
 import os
+import math
+import requests
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import ast
+import pycountry
+import pycountry_convert as pc
 
 # Add parent directory to path to access utils
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,15 +32,7 @@ except ImportError:
         Placeholder function to get athlete image.
         Replace this with your actual implementation if you have image URLs.
         """
-        return Noneimport math
-import requests
-import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.express as px
-import ast
-import pycountry
-import pycountry_convert as pc
+        return None
 
 # Function to get athlete image (if available)
 def get_athlete_image(athlete_name):

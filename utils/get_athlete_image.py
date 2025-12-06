@@ -17,7 +17,7 @@ def get_athlete_image(name):
         return None
     except Timeout:
         return None
-    except RecursionError:
+    except RequestException:
         return None
     
 
