@@ -31,6 +31,7 @@ athletes["events"] = athletes["events"].apply(safe_parse)
 
 st.title("Athletes")
 
+st.subheader("An Athlete Profile")
 
 selected_athlete = st.selectbox(label="Select an athlete:",
              options=athletes["code"],
@@ -101,7 +102,7 @@ if selected_athlete:
 athletes["age"] = 2024 - pd.to_datetime(athletes["birth_date"]).dt.year
 
 athletes_exploded = athletes.explode("disciplines")
-athletes_exploded
+# athletes_exploded
 
 fig_age = px.violin(
     athletes_exploded,
@@ -115,5 +116,5 @@ fig_age = px.violin(
 
 fig_age.update_layout(xaxis_title="Sport", yaxis_title="Age")
 
-st.subheader("Athlete Age Distribution")
+st.subheader("Global Athletes Age Distribution")
 st.plotly_chart(fig_age)
