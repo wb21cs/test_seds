@@ -238,6 +238,7 @@ st.subheader("Global Athletes Age Distribution")
 st.plotly_chart(fig_age)
 
 
+st.subheader("Gender Distribution")
 
 view_level = st.selectbox(
     "View Gender Distribution By:",
@@ -276,7 +277,6 @@ fig_gender = px.bar(
     title="Gender Distribution of Athletes"
 )
 
-st.subheader("Gender Distribution")
 st.plotly_chart(fig_gender, width="stretch")
 
 
