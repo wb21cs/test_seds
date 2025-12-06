@@ -20,13 +20,27 @@ col5.metric("Events", nb_events)
 
 
 
-
+# we used a bar chart instead of a pie/donut chart because according to a book we read called "storytelling with data," pie charts don't give the right message
+# to the reader and they aren't that meaningful when you look at it closely
 medal_df = pd.read_csv("data/medals_total.csv")
 
 medal_counts = medal_df[['Gold', 'Silver', 'Bronze']].sum().reset_index()
 medal_counts.columns = ['Medal', 'Count']
 
+medal_count_fig = px.bar(medal_counts, x="Medal", y="Count", color="Medal", title="Global Medal Distribution")
 
-fig = px.bar(medal_counts, x="Medal", y="Count", color="Medal", title="Global Medal Distribution")
+st.plotly_chart(medal_count_fig)
 
-st.plotly_chart(fig)
+
+
+medal_ranking_df = medal_df.sort_values(
+        by=["Gold", "Silver", "Bronze"],
+        ascending=[False, False, False]
+    ).loc[:, ["country_code", "country", "Gold", "Silver", "Bronze"]].head(10).melt(
+        id_vars=["country_code", "country"],
+        value_vars=['Gold', 'Silver', 'Bronze'],
+        var_name='medal',
+        value_name='count'
+    )
+medal_ranking_fig = px.bar(medal_ranking_df, x="country", y="count", color="medal", barmode="group")
+st.plotly_chart(medal_ranking_fig)
