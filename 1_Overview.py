@@ -42,5 +42,5 @@ medal_ranking_df = medal_df.sort_values(
         var_name='medal',
         value_name='count'
     )
-medal_ranking_fig = px.bar(medal_ranking_df, x="country", y="count", color="medal", barmode="group")
+medal_ranking_fig = px.bar(medal_ranking_df, x="country", y="count", color="medal", barmode="group", title="Country Ranking By Medals")
 st.plotly_chart(medal_ranking_fig)
