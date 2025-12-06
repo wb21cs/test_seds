@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 
 def get_athlete_image(name):
-    name = name.lower().replace(" ", "-")
+    name = "-".join(name.lower().split(' ')[::-1])
     url = f"https://www.olympics.com/en/athletes/{name}"
     
     headers = {
