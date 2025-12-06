@@ -1,4 +1,5 @@
 import requests
+from requests.exceptions import ConnectionError, Timeout, RequestException
 from bs4 import BeautifulSoup
 
 def get_athlete_image(name):
@@ -8,8 +9,18 @@ def get_athlete_image(name):
     headers = {
         "User-Agent": "Mozilla/5.0"
     }
+    try:
+        response = requests.get(url, headers=headers, timeout=5)
+        response.raise_for_status()
+        
+    except ConnectionError:
+        return None
+    except Timeout:
+        return None
+    except RecursionError:
+        return None
+    
 
-    response = requests.get(url, headers=headers)
 
     if response.status_code != 200:
         print("Failed to fetch page")
