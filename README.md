@@ -45,10 +45,10 @@ pip install -r requirements.txt
 
 ---
 
-### 4. Run the app
+### 4. Run the app from the entry file `1_Overview.py`
 
 ```bash
-streamlit run app.py
+streamlit run 1_Overview.py
 ```
 
 The app will open in your browser (usually at `http://localhost:8501`).
